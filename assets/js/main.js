@@ -1,209 +1,236 @@
-/*
-	Hyperspace by HTML5 UP
-	html5up.net | @n33co
-	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
-*/
-
 (function($) {
 
-	skel.breakpoints({
-		xlarge:	'(max-width: 1680px)',
-		large:	'(max-width: 1280px)',
-		medium:	'(max-width: 980px)',
-		small:	'(max-width: 736px)',
-		xsmall:	'(max-width: 480px)'
-	});
+	var settings = {
 
-	$(function() {
+		// Speed to resize panel.
+			resizeSpeed: 600,
 
-		var	$window = $(window),
-			$body = $('body'),
-			$sidebar = $('#sidebar');
+		// Speed to fade in/out.
+			fadeSpeed: 300,
 
-		// Hack: Enable IE flexbox workarounds.
-			if (skel.vars.IEVersion < 12)
-				$body.addClass('is-ie');
+		// Size factor.
+			sizeFactor: 11.5,
 
-		// Disable animations/transitions until the page has loaded.
-			if (skel.canUse('transition'))
-				$body.addClass('is-loading');
+		// Minimum point size.
+			sizeMin: 15,
 
-			$window.on('load', function() {
-				window.setTimeout(function() {
-					$body.removeClass('is-loading');
-				}, 100);
-			});
+		// Maximum point size.
+			sizeMax: 20
 
-		// Forms.
+	};
 
-			// Fix: Placeholder polyfill.
-				$('form').placeholder();
+	var $window = $(window);
 
-			// Hack: Activate non-input submits.
-				$('form').on('click', '.submit', function(event) {
+	$window.on('load', function() {
 
-					// Stop propagation, default.
-						event.stopPropagation();
-						event.preventDefault();
+		skel
+			.breakpoints({
+				desktop: '(min-width: 737px)',
+				mobile: '(max-width: 736px)'
+			})
+			.viewport({
+				breakpoints: {
+					desktop: {
+						width: 1080,
+						scalable: false
+					}
+				}
+			})
+			.on('+desktop', function() {
 
-					// Submit form.
-						$(this).parents('form').submit();
+				var	$body = $('body'),
+					$main = $('#main'),
+					$panels = $main.find('.panel'),
+					$hbw = $('html,body,window'),
+					$footer = $('#footer'),
+					$wrapper = $('#wrapper'),
+					$nav = $('#nav'), $nav_links = $nav.find('a'),
+					$jumplinks = $('.jumplink'),
+					$form = $('form'),
+					panels = [],
+					activePanelId = null,
+					firstPanelId = null,
+					isLocked = false,
+					hash = window.location.hash.substring(1);
 
-				});
+				if (skel.vars.mobile) {
 
-		// Prioritize "important" elements on medium.
-			skel.on('+medium -medium', function() {
-				$.prioritize(
-					'.important\\28 medium\\29',
-					skel.breakpoint('medium').active
-				);
-			});
-
-		// Sidebar.
-			if ($sidebar.length > 0) {
-
-				var $sidebar_a = $sidebar.find('a');
-
-				$sidebar_a
-					.addClass('scrolly')
-					.on('click', function() {
-
-						var $this = $(this);
-
-						// External link? Bail.
-							if ($this.attr('href').charAt(0) != '#')
-								return;
-
-						// Deactivate all links.
-							$sidebar_a.removeClass('active');
-
-						// Activate link *and* lock it (so Scrollex doesn't try to activate other links as we're scrolling to this one's section).
-							$this
-								.addClass('active')
-								.addClass('active-locked');
-
-					})
-					.each(function() {
-
-						var	$this = $(this),
-							id = $this.attr('href'),
-							$section = $(id);
-
-						// No section for this link? Bail.
-							if ($section.length < 1)
-								return;
-
-						// Scrollex.
-							$section.scrollex({
-								mode: 'middle',
-								top: '-20vh',
-								bottom: '-20vh',
-								initialize: function() {
-
-									// Deactivate section.
-										if (skel.canUse('transition'))
-											$section.addClass('inactive');
-
-								},
-								enter: function() {
-
-									// Activate section.
-										$section.removeClass('inactive');
-
-									// No locked links? Deactivate all links and activate this section's one.
-										if ($sidebar_a.filter('.active-locked').length == 0) {
-
-											$sidebar_a.removeClass('active');
-											$this.addClass('active');
-
-										}
-
-									// Otherwise, if this section's link is the one that's locked, unlock it.
-										else if ($this.hasClass('active-locked'))
-											$this.removeClass('active-locked');
-
-								}
-							});
-
-					});
-
-			}
-
-		// Scrolly.
-			$('.scrolly').scrolly({
-				speed: 1000,
-				offset: function() {
-
-					// If <=large, >small, and sidebar is present, use its height as the offset.
-						if (skel.breakpoint('large').active
-						&&	!skel.breakpoint('small').active
-						&&	$sidebar.length > 0)
-							return $sidebar.height();
-
-					return 0;
+					settings.fadeSpeed = 0;
+					settings.resizeSpeed = 0;
+					$nav_links.find('span').remove();
 
 				}
-			});
 
-		// Spotlights.
-			$('.spotlights > section')
-				.scrollex({
-					mode: 'middle',
-					top: '-10vh',
-					bottom: '-10vh',
-					initialize: function() {
+				// Body.
+					$body._resize = function() {
+						var factor = ($window.width() * $window.height()) / (1440 * 900);
+						$body.css('font-size', Math.min(Math.max(Math.floor(factor * settings.sizeFactor), settings.sizeMin), settings.sizeMax) + 'pt');
+						$main.height(panels[activePanelId].outerHeight());
+						$body._reposition();
+					};
 
-						// Deactivate section.
-							if (skel.canUse('transition'))
-								$(this).addClass('inactive');
+					$body._reposition = function() {
+						if (skel.vars.mobile && (window.orientation == 0 || window.orientation == 180))
+							$wrapper.css('padding-top', Math.max((($window.height() - (panels[activePanelId].outerHeight() + $footer.outerHeight())) / 2) - $nav.height(), 30) + 'px');
+						else
+							$wrapper.css('padding-top', ((($window.height() - panels[firstPanelId].height()) / 2) - $nav.height()) + 'px');
+					};
 
-					},
-					enter: function() {
+				// Panels.
+					$panels.each(function(i) {
+						var t = $(this), id = t.attr('id');
 
-						// Activate section.
-							$(this).removeClass('inactive');
+						panels[id] = t;
 
-					}
-				})
-				.each(function() {
+						if (i == 0) {
 
-					var	$this = $(this),
-						$image = $this.find('.image'),
-						$img = $image.find('img'),
-						x;
-
-					// Assign image.
-						$image.css('background-image', 'url(' + $img.attr('src') + ')');
-
-					// Set background position.
-						if (x = $img.data('position'))
-							$image.css('background-position', x);
-
-					// Hide <img>.
-						$img.hide();
-
-				});
-
-		// Features.
-			if (skel.canUse('transition'))
-				$('.features')
-					.scrollex({
-						mode: 'middle',
-						top: '-20vh',
-						bottom: '-20vh',
-						initialize: function() {
-
-							// Deactivate section.
-								$(this).addClass('inactive');
-
-						},
-						enter: function() {
-
-							// Activate section.
-								$(this).removeClass('inactive');
+							firstPanelId = id;
+							activePanelId = id;
 
 						}
+						else
+							t.hide();
+
+						t._activate = function(instant) {
+
+							// Check lock state and determine whether we're already at the target.
+								if (isLocked
+								||	activePanelId == id)
+									return false;
+
+							// Lock.
+								isLocked = true;
+
+							// Change nav link (if it exists).
+								$nav_links.removeClass('active');
+								$nav_links.filter('[href="#' + id + '"]').addClass('active');
+
+							// Change hash.
+								if (i == 0)
+									window.location.hash = '#';
+								else
+									window.location.hash = '#' + id;
+
+							// Add bottom padding.
+								var x = parseInt($wrapper.css('padding-top')) +
+										panels[id].outerHeight() +
+										$nav.outerHeight() +
+										$footer.outerHeight();
+
+								if (x > $window.height())
+									$wrapper.addClass('tall');
+								else
+									$wrapper.removeClass('tall');
+
+							// Fade out active panel.
+								$footer.fadeTo(settings.fadeSpeed, 0.0001);
+								panels[activePanelId].fadeOut(instant ? 0 : settings.fadeSpeed, function() {
+
+									// Set new active.
+										activePanelId = id;
+
+										// Force scroll to top.
+											$hbw.animate({
+												scrollTop: 0
+											}, settings.resizeSpeed, 'swing');
+
+										// Reposition.
+											$body._reposition();
+
+										// Resize main to height of new panel.
+											$main.animate({
+												height: panels[activePanelId].outerHeight()
+											}, instant ? 0 : settings.resizeSpeed, 'swing', function() {
+
+												// Fade in new active panel.
+													$footer.fadeTo(instant ? 0 : settings.fadeSpeed, 1.0);
+													panels[activePanelId].fadeIn(instant ? 0 : settings.fadeSpeed, function() {
+
+														// Unlock.
+															isLocked = false;
+
+													});
+											});
+
+								});
+
+						};
+
 					});
+
+				// Nav + Jumplinks.
+					$nav_links.add($jumplinks).click(function(e) {
+						var t = $(this), href = t.attr('href'), id;
+
+						if (href.substring(0,1) == '#') {
+
+							e.preventDefault();
+							e.stopPropagation();
+
+							id = href.substring(1);
+
+							if (id in panels)
+								panels[id]._activate();
+
+						}
+
+					});
+
+				// Window.
+					$window
+						.resize(function() {
+
+							if (!isLocked)
+								$body._resize();
+
+						});
+
+					$window
+						.on('orientationchange', function() {
+
+							if (!isLocked)
+								$body._reposition();
+
+						});
+
+					if (skel.vars.IEVersion < 9)
+						$window
+							.on('resize', function() {
+								$wrapper.css('min-height', $window.height());
+							});
+
+				// Fix: Placeholder polyfill.
+					$('form').placeholder();
+
+				// Prioritize "important" elements on mobile.
+					skel.on('+mobile -mobile', function() {
+						$.prioritize(
+							'.important\\28 mobile\\29',
+							skel.breakpoint('mobile').active
+						);
+					});
+
+				// CSS polyfills (IE<9).
+					if (skel.vars.IEVersion < 9)
+						$(':last-child').addClass('last-child');
+
+				// Init.
+					$window
+						.trigger('resize');
+
+					if (hash && hash in panels)
+						panels[hash]._activate(true);
+
+					$wrapper.fadeTo(400, 1.0);
+
+			})
+			.on('-desktop', function() {
+
+				window.setTimeout(function() {
+					location.reload(true);
+				}, 50);
+
+			});
 
 	});
 
