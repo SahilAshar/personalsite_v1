@@ -1,28 +1,3 @@
-function loadImages (images) {
-  // each image will be loaded by this function.
-  // it returns a Promise that will resolve once
-  // the image has finished loading
-  let loader = function (src) {
-    return new Promise(function (resolve, reject) {
-      let img = new Image();
-      img.onload = function () {
-        // resolve the promise with our url
-        resolve(src);
-      };
-      img.onerror = function (err) {
-        reject(err);
-      };
-      img.src = src;
-    });
-  };
-
-  // return an array of image-loading promises
-  return images.map(function (image) {
-    return loader(image);
-  });
-}
-
-
 // the images we are going to display
 let myImages = [
   "assets/css/images/8bit/1morning.png",
@@ -37,42 +12,48 @@ let myImages = [
 
 // $(document).ready(fn) is deprecated,
 // use the $(fn) form instead
-$(function() {
+$(function () {
 
-  // this receives an array of the promises for each image
-  function cycleImages ($target, images) {
-    let index = 0,
-      interval = 5500; // how many ms to wait before attempting to switch images
+  function updateBackground(images) {
+    var now = new Date();
+    var hours = now.getHours();
+    var src;
 
-    function nextImage () {
-      // p is the promise for the current image
-      let p = images[index],
-        next = function (wait) {
-          // increment our counter and wait to display the next one
-          index = (index + 1) % images.length;
-          setTimeout(nextImage, wait);
-        };
-
-      // wait for this image to load or fail to load
-      p.then(function (src) {
-        // it loaded, display it
-        $target.css({
-          'backgroundImage' : 'url("' + src + '")',
-          'background-size' : '100% 100%'
-      });
-        next(interval);
-      }).catch(function (err) {
-        // this one failed to load, skip it
-        next(0);
-      });
-
+    if (hours < 1) {
+      src = images[7];
+    }
+    else if (hours >= 1 && hours < 5) {
+      src = images[7];
+    }
+    else if (hours >= 5 && hours < 8) {
+      src = images[0];
+    }
+    else if (hours >= 8 && hours < 11) {
+      src = images[1];
+    }
+    else if (hours >= 11 && hours < 14) {
+      src = images[2];
+    }
+    else if (hours >= 14 && hours < 16) {
+      src = images[3];
+    }
+    else if (hours >= 16 && hours < 18) {
+      src = images[4];
+    }
+    else if (hours >= 18 && hours < 21) {
+      src = images[5];
+    }
+    else if (hours >= 21 && hours < 24) {
+      src = images[6];
     }
 
-    // start cycling
-    nextImage();
+    $target.css({
+      'backgroundImage': 'url("' + src + '")',
+      'background-size': '100% 100%'
+    });
   }
 
-  // load the images and start cycling through them as they are loaded
-  cycleImages($('body'), loadImages(myImages));
+  updateBackground(myImages);
+  setInterval(function () { changeBg(myImages); }, 300000)
 });
 
