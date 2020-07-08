@@ -47,10 +47,11 @@ $(function () {
       src = images[6];
     }
 
-    $target.css({
-      'backgroundImage': 'url("' + src + '")',
-      'background-size': '100% 100%'
-    });
+    // There might be a better way to do this, but it works
+    var body = document.getElementsByTagName("body")[0];
+    body.style.backgroundImage = 'url("' + src + '")';
+    body.style.background.size = "100% 100%";
+    
   }
 
   updateBackground(myImages);
